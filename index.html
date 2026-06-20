@@ -291,12 +291,13 @@ function render(res){
   smoothDepth = smoothDepth===null ? m.depth : smoothDepth+0.35*(m.depth-smoothDepth);
   const raw=smoothDepth;
 
-  // auto-calibrate against this session's own observed range — fixed angle
-  // thresholds don't generalize across camera placements/body types
+  // calibrate against this session's own observed range — fixed angle
+  // thresholds don't generalize across camera placements/body types.
+  // Expand-only (no decay): a held position must never shrink the range,
+  // or noise becomes the whole signal once the range collapses.
   if(rangeMin===null){ rangeMin=raw; rangeMax=raw; }
   rangeMin=Math.min(rangeMin,raw); rangeMax=Math.max(rangeMax,raw);
-  rangeMin += (raw-rangeMin)*0.004; rangeMax -= (rangeMax-raw)*0.004; // slow relax, forgets stale outliers
-  const norm=clamp((raw-rangeMin)/Math.max(rangeMax-rangeMin,8)*100,0,100);
+  const norm=clamp((raw-rangeMin)/Math.max(rangeMax-rangeMin,15)*100,0,100);
 
   tick(active,ex,{...m,depth:norm,raw});
 }
