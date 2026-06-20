@@ -133,10 +133,38 @@ let mode='auto';                  // squat | pullup | pushup | auto
 const counts={squat:0,pullup:0,pushup:0};
 let smoothDepth=null, downSince=0, curActive=null;
 let rangeMin=null, rangeMax=null;   // auto-calibrated envelope of the depth signal, per exercise
+let debugMode=false;
 let autoCandidate=null, autoCandidateCount=0, autoActive='squat';
 
 const L={ nose:0,lShoulder:11,rShoulder:12,lElbow:13,rElbow:14,lWrist:15,rWrist:16,
           lHip:23,rHip:24,lKnee:25,rKnee:26,lAnkle:27,rAnkle:28 };
+
+const LABEL_GROUPS=[
+  {name:'Arm',   color:'#5b6cff', idx:[L.lElbow,L.rElbow,L.lWrist,L.rWrist]},
+  {name:'Torso', color:'#36d399', idx:[L.nose,L.lShoulder,L.rShoulder,L.lHip,L.rHip]},
+  {name:'Leg',   color:'#ff6b6b', idx:[L.lKnee,L.rKnee,L.lAnkle,L.rAnkle]},
+];
+function drawLabels(lm){
+  ctx.font='bold 13px sans-serif';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  for(const g of LABEL_GROUPS){
+    for(const i of g.idx){
+      const p=lm[i];
+      if((p.visibility??1)<0.4) continue;
+      const x=p.x*canvas.width, y=p.y*canvas.height-16;
+      ctx.save();
+      ctx.translate(x,y);
+      ctx.scale(-1,1); // counter the canvas's CSS mirror so text reads correctly
+      const w=ctx.measureText(g.name).width+8;
+      ctx.fillStyle='rgba(0,0,0,0.6)';
+      ctx.fillRect(-w/2,-10,w,18);
+      ctx.fillStyle=g.color;
+      ctx.fillText(g.name,0,0);
+      ctx.restore();
+    }
+  }
+}
 
 // ---------- angle helpers ----------
 const angle=(a,b,c)=>{ // angle at b, 3D-aware so it works on world landmarks
@@ -279,6 +307,7 @@ function render(res){
   const wl=(res.worldLandmarks&&res.worldLandmarks[0])||lm; // camera-rotation-invariant 3D landmarks
   draw.drawConnectors(lm,PoseLandmarker.POSE_CONNECTIONS,{color:'rgba(255,255,255,0.5)',lineWidth:2});
   draw.drawLandmarks(lm,{radius:3,color:'#5b6cff'});
+  if(debugMode) drawLabels(lm);
 
   const active=mode==='auto'?detectStable(lm):mode;
   Object.entries(chipEl).forEach(([k,el])=>el.classList.toggle('active',k===active));
@@ -324,7 +353,7 @@ document.querySelectorAll('.exBtn').forEach(b=>b.addEventListener('click',()=>{
   autoCandidate=null; autoCandidateCount=0;
 }));
 $('menuBtn').addEventListener('click',()=>{ $('menuPanel').classList.toggle('hidden'); });
-$('dbgToggle').addEventListener('change',e=>{ debugEl.classList.toggle('big',e.target.checked); });
+$('dbgToggle').addEventListener('change',e=>{ debugMode=e.target.checked; debugEl.classList.toggle('big',debugMode); });
 $('reset').addEventListener('click',()=>{
   Object.keys(counts).forEach(k=>{ counts[k]=0; cntEl[k].textContent='0'; });
   phase='up'; smoothDepth=null; downSince=0; rangeMin=null; rangeMax=null;
