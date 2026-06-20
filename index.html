@@ -11,12 +11,20 @@
   video,canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
   video { z-index:1; } canvas { z-index:2; }
 
-  /* big rep number */
+  /* per-exercise counters, always visible */
   #counter { position:fixed; top:0; left:0; right:0; z-index:3; padding:calc(14px + env(safe-area-inset-top)) 16px 0; text-align:center; pointer-events:none; }
-  #rep { font-size:120px; font-weight:800; line-height:1; letter-spacing:-3px; font-variant-numeric:tabular-nums; text-shadow:0 4px 30px rgba(0,0,0,0.6); transition:transform .12s; }
-  #rep.pop { transform:scale(1.18); }
-  #exLabel { font-size:18px; font-weight:700; color:#5b6cff; margin-top:4px; text-transform:uppercase; letter-spacing:2px; }
-  #phase { font-size:13px; color:#9aa0b5; margin-top:2px; min-height:16px; }
+  #counts { display:flex; justify-content:center; gap:10px; }
+  .cnt { position:relative; display:flex; flex-direction:column; align-items:center; padding:8px 16px; border-radius:16px; background:rgba(20,20,30,0.55); border:1px solid rgba(255,255,255,0.1); transition:transform .15s,background .15s,border-color .15s; }
+  .cnt.active { background:rgba(91,108,255,0.22); border-color:#5b6cff; transform:scale(1.08); }
+  .cntNum { font-size:38px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; text-shadow:0 4px 20px rgba(0,0,0,0.6); transition:transform .12s; }
+  .cnt.active .cntNum { font-size:54px; }
+  .cntNum.pop { transform:scale(1.25); }
+  .cntLabel { font-size:10px; font-weight:700; color:#9aa0b5; text-transform:uppercase; letter-spacing:1.5px; margin-top:2px; }
+  .cnt.active .cntLabel { color:#c9cee0; }
+  .plusOne { position:absolute; top:-4px; right:0; font-size:16px; font-weight:800; color:#36d399; opacity:0; }
+  .plusOne.fly { animation:flyUp .8s ease-out forwards; }
+  @keyframes flyUp { 0%{opacity:1; transform:translateY(0) scale(1);} 100%{opacity:0; transform:translateY(-28px) scale(1.35);} }
+  #phase { font-size:13px; color:#9aa0b5; margin-top:8px; min-height:16px; }
 
   /* depth bar */
   #depthWrap { position:fixed; right:16px; top:50%; transform:translateY(-50%); z-index:3; width:10px; height:200px; background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden; }
@@ -37,6 +45,9 @@
   #status { display:flex; align-items:center; gap:7px; font-size:12px; color:#9aa0b5; background:rgba(8,8,14,0.5); padding:6px 10px; border-radius:999px; }
   #pulse { width:8px; height:8px; border-radius:50%; background:#444; }
   #pulse.live { background:#36d399; box-shadow:0 0 8px #36d399; }
+
+  #menuWrap { position:fixed; top:0; right:0; z-index:5; padding:calc(12px + env(safe-area-inset-top)) 14px; }
+  #menuBtn { width:34px; height:34px; border-radius:50%; border:none; background:rgba(8,8,14,0.5); color:#e8e8ef; font-size:16px; line-height:1; }
 
   #start { position:fixed; inset:0; z-index:10; background:#0a0a0f; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px; text-align:center; }
   #start h1 { font-size:34px; font-weight:800; letter-spacing:-.5px; margin-bottom:10px; }
@@ -60,21 +71,25 @@
   </div>
 
   <div id="top" class="hidden" data-hud><div id="status"><span id="pulse"></span><span id="statusText">starting…</span></div></div>
+  <div id="menuWrap" class="hidden" data-hud><button id="menuBtn" aria-label="Exercise menu">☰</button></div>
 
   <div id="counter" class="hidden" data-hud>
-    <div id="rep">0</div>
-    <div id="exLabel">Squats</div>
+    <div id="counts">
+      <div class="cnt" id="chip-squat"><div class="cntNum" id="cnt-squat">0</div><div class="cntLabel">Squat</div></div>
+      <div class="cnt" id="chip-pullup"><div class="cntNum" id="cnt-pullup">0</div><div class="cntLabel">Pull-up</div></div>
+      <div class="cnt" id="chip-pushup"><div class="cntNum" id="cnt-pushup">0</div><div class="cntLabel">Push-up</div></div>
+    </div>
     <div id="phase">get in frame</div>
   </div>
 
   <div id="depthWrap" class="hidden" data-hud><div id="depthMark"></div><div id="depthFill"></div></div>
 
   <div id="ctrls" class="hidden" data-hud>
-    <div id="exRow">
-      <div class="exBtn active" data-ex="squat">Squat</div>
+    <div id="exRow" class="hidden">
+      <div class="exBtn" data-ex="squat">Squat</div>
       <div class="exBtn" data-ex="pullup">Pull-up</div>
       <div class="exBtn" data-ex="pushup">Push-up</div>
-      <div class="exBtn" data-ex="auto">Auto</div>
+      <div class="exBtn active" data-ex="auto">Auto</div>
     </div>
     <div id="btnRow">
       <button class="act" id="reset">Reset</button>
@@ -88,34 +103,40 @@ import { PoseLandmarker, FilesetResolver, DrawingUtils }
 
 const $ = id => document.getElementById(id);
 const video=$('video'), canvas=$('canvas'), ctx=canvas.getContext('2d');
-const repEl=$('rep'), exLabel=$('exLabel'), phaseEl=$('phase');
+const phaseEl=$('phase');
+const cntEl={squat:$('cnt-squat'),pullup:$('cnt-pullup'),pushup:$('cnt-pushup')};
+const chipEl={squat:$('chip-squat'),pullup:$('chip-pullup'),pushup:$('chip-pushup')};
 const depthFill=$('depthFill'), depthMark=$('depthMark');
 const statusText=$('statusText'), pulse=$('pulse'), errEl=$('err');
 
 let landmarker, draw, facing='user', stream, running=false, lastT=-1;
-let mode='squat';                 // squat | pullup | pushup | auto
-let count=0;
+let mode='auto';                  // squat | pullup | pushup | auto
+const counts={squat:0,pullup:0,pushup:0};
+let smoothDepth=null, downSince=0, curActive=null;
+let autoCandidate=null, autoCandidateCount=0, autoActive='squat';
 
 const L={ nose:0,lShoulder:11,rShoulder:12,lElbow:13,rElbow:14,lWrist:15,rWrist:16,
           lHip:23,rHip:24,lKnee:25,rKnee:26,lAnkle:27,rAnkle:28 };
 
 // ---------- angle helpers ----------
-const angle=(a,b,c)=>{ // angle at b
-  const ab={x:a.x-b.x,y:a.y-b.y}, cb={x:c.x-b.x,y:c.y-b.y};
-  const dot=ab.x*cb.x+ab.y*cb.y;
-  const m=Math.hypot(ab.x,ab.y)*Math.hypot(cb.x,cb.y)||1e-6;
+const angle=(a,b,c)=>{ // angle at b, 3D-aware so it works on world landmarks
+  const ab={x:a.x-b.x,y:a.y-b.y,z:(a.z??0)-(b.z??0)}, cb={x:c.x-b.x,y:c.y-b.y,z:(c.z??0)-(b.z??0)};
+  const dot=ab.x*cb.x+ab.y*cb.y+ab.z*cb.z;
+  const m=Math.hypot(ab.x,ab.y,ab.z)*Math.hypot(cb.x,cb.y,cb.z)||1e-6;
   return Math.acos(Math.max(-1,Math.min(1,dot/m)))*180/Math.PI;
 };
 const avg=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2,visibility:Math.min(a.visibility??1,b.visibility??1)});
 const vis=(lm,i)=>(lm[i].visibility??1)>0.4;
+const allVis=(lm,idxs)=>idxs.every(i=>vis(lm,i));
 
 // ---------- per-exercise config ----------
 // each: measure() -> {value (0..100 depth %), down(bool flag thresholds), label, detail}
 const EX = {
   squat:{
     label:'Squats', mark:50,
-    measure(lm){
-      const kneeAng=(angle(lm[L.lHip],lm[L.lKnee],lm[L.lAnkle])+angle(lm[L.rHip],lm[L.rKnee],lm[L.rAnkle]))/2;
+    needVis:[L.lHip,L.rHip,L.lKnee,L.rKnee,L.lAnkle,L.rAnkle],
+    measure(lm,wl){
+      const kneeAng=(angle(wl[L.lHip],wl[L.lKnee],wl[L.lAnkle])+angle(wl[L.rHip],wl[L.rKnee],wl[L.rAnkle]))/2;
       // 170 = standing straight, ~70 = deep squat
       const depth=clamp((175-kneeAng)/(175-75)*100,0,100);
       return {depth, kneeAng};
@@ -125,8 +146,9 @@ const EX = {
   },
   pushup:{
     label:'Push-ups', mark:50,
-    measure(lm){
-      const elbow=(angle(lm[L.lShoulder],lm[L.lElbow],lm[L.lWrist])+angle(lm[L.rShoulder],lm[L.rElbow],lm[L.rWrist]))/2;
+    needVis:[L.lShoulder,L.rShoulder,L.lElbow,L.rElbow,L.lWrist,L.rWrist],
+    measure(lm,wl){
+      const elbow=(angle(wl[L.lShoulder],wl[L.lElbow],wl[L.lWrist])+angle(wl[L.rShoulder],wl[L.rElbow],wl[L.rWrist]))/2;
       const depth=clamp((170-elbow)/(170-80)*100,0,100); // 170 arms straight, 80 chest down
       return {depth, elbow};
     },
@@ -135,12 +157,13 @@ const EX = {
   },
   pullup:{
     label:'Pull-ups', mark:55,
-    measure(lm){
+    needVis:[L.nose,L.lShoulder,L.rShoulder,L.lElbow,L.rElbow,L.lWrist,L.rWrist],
+    measure(lm,wl){
       // chin/nose rising toward wrists = up; arms straighten at bottom
       const wristY=Math.min(lm[L.lWrist].y,lm[L.rWrist].y);
       const noseY=lm[L.nose].y;
       const shoulderY=(lm[L.lShoulder].y+lm[L.rShoulder].y)/2;
-      const elbow=(angle(lm[L.lShoulder],lm[L.lElbow],lm[L.lWrist])+angle(lm[L.rShoulder],lm[L.rElbow],lm[L.rWrist]))/2;
+      const elbow=(angle(wl[L.lShoulder],wl[L.lElbow],wl[L.lWrist])+angle(wl[L.rShoulder],wl[L.rElbow],wl[L.rWrist]))/2;
       // range from wrists(top) to a hang position ~ shoulder+span below
       const span=Math.abs(shoulderY-wristY)||0.2;
       // chin progress toward wrist line: 0 hanging, 100 chin at hands
@@ -156,24 +179,30 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 // ---------- rep state machine ----------
 let phase='up';                 // 'up' (top) or 'down' (bottom)
 let lastFlip=0;
-function tick(ex,m){
+function tick(key,ex,m){
   const now=performance.now();
   depthFill.style.height=m.depth.toFixed(0)+'%';
   depthMark.style.bottom=ex.mark+'%';
   if(phase==='up' && m.depth>=ex.downAt){
-    phase='down'; phaseEl.textContent=ex.detail(m);
+    phase='down'; downSince=now; phaseEl.textContent=ex.detail(m);
   } else if(phase==='down' && m.depth<=ex.upAt){
-    // completed a rep on return to top — debounce 350ms
-    if(now-lastFlip>350){ count++; lastFlip=now; bump(); }
+    // require the bottom to hold briefly so a camera jolt can't fake a rep
+    if(now-downSince>=200 && now-lastFlip>350){ counts[key]++; lastFlip=now; bump(key); }
     phase='up'; phaseEl.textContent='up';
   } else {
     phaseEl.textContent = phase==='down' ? ex.detail(m) : 'ready';
   }
 }
-function bump(){
-  repEl.textContent=count;
-  repEl.classList.add('pop');
-  setTimeout(()=>repEl.classList.remove('pop'),130);
+function bump(key){
+  const el=cntEl[key], chip=chipEl[key];
+  el.textContent=counts[key];
+  el.classList.add('pop');
+  setTimeout(()=>el.classList.remove('pop'),130);
+  const plus=document.createElement('div');
+  plus.className='plusOne fly';
+  plus.textContent='+1';
+  chip.appendChild(plus);
+  setTimeout(()=>plus.remove(),800);
   if(navigator.vibrate) navigator.vibrate(30);
 }
 
@@ -189,6 +218,12 @@ function detect(lm){
   // body horizontal (shoulders & hips similar Y, large X spread) -> push-up
   if(Math.abs(shoulderY-hipY) < 0.18) return 'pushup';
   return 'squat';
+}
+function detectStable(lm){
+  const d=detect(lm);
+  if(d===autoCandidate) autoCandidateCount++; else { autoCandidate=d; autoCandidateCount=1; }
+  if(autoCandidateCount>=5) autoActive=d; // ~5 consistent frames before switching, avoids flicker mid-rep
+  return autoActive;
 }
 
 // ---------- camera + loop ----------
@@ -220,14 +255,20 @@ function render(res){
   if(!res.landmarks||!res.landmarks.length){ statusText.textContent='no person — step into frame'; phaseEl.textContent='get in frame'; return; }
   statusText.textContent='live';
   const lm=res.landmarks[0];
+  const wl=(res.worldLandmarks&&res.worldLandmarks[0])||lm; // camera-rotation-invariant 3D landmarks
   draw.drawConnectors(lm,PoseLandmarker.POSE_CONNECTIONS,{color:'rgba(255,255,255,0.5)',lineWidth:2});
   draw.drawLandmarks(lm,{radius:3,color:'#5b6cff'});
 
-  let active=mode;
-  if(mode==='auto'){ active=detect(lm); exLabel.textContent=EX[active].label+' (auto)'; }
+  const active=mode==='auto'?detectStable(lm):mode;
+  Object.entries(chipEl).forEach(([k,el])=>el.classList.toggle('active',k===active));
+
+  if(active!==curActive){ curActive=active; phase='up'; smoothDepth=null; downSince=0; }
+
   const ex=EX[active];
-  const m=ex.measure(lm);
-  tick(ex,m);
+  if(!allVis(lm,ex.needVis)){ phaseEl.textContent='get fully in frame'; return; }
+  const m=ex.measure(lm,wl);
+  smoothDepth = smoothDepth===null ? m.depth : smoothDepth+0.35*(m.depth-smoothDepth);
+  tick(active,ex,{...m,depth:smoothDepth});
 }
 
 // ---------- UI ----------
@@ -248,10 +289,14 @@ $('go').addEventListener('click',async()=>{
 document.querySelectorAll('.exBtn').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.exBtn').forEach(x=>x.classList.remove('active'));
   b.classList.add('active'); mode=b.dataset.ex;
-  if(mode!=='auto') exLabel.textContent=EX[mode].label;
-  count=0; repEl.textContent='0'; phase='up';
+  phase='up'; smoothDepth=null; downSince=0; curActive=null;
+  autoCandidate=null; autoCandidateCount=0;
 }));
-$('reset').addEventListener('click',()=>{ count=0; repEl.textContent='0'; phase='up'; });
+$('menuBtn').addEventListener('click',()=>{ $('exRow').classList.toggle('hidden'); });
+$('reset').addEventListener('click',()=>{
+  Object.keys(counts).forEach(k=>{ counts[k]=0; cntEl[k].textContent='0'; });
+  phase='up'; smoothDepth=null; downSince=0;
+});
 $('flip').addEventListener('click',async()=>{ facing=facing==='user'?'environment':'user'; try{await startCam();}catch(e){errEl.textContent=e.message;} });
 </script>
 </body>
