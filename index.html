@@ -25,6 +25,7 @@
   .plusOne.fly { animation:flyUp .8s ease-out forwards; }
   @keyframes flyUp { 0%{opacity:1; transform:translateY(0) scale(1);} 100%{opacity:0; transform:translateY(-28px) scale(1.35);} }
   #phase { font-size:13px; color:#9aa0b5; margin-top:8px; min-height:16px; }
+  #debug { font-size:11px; color:#5b6cff; margin-top:2px; font-variant-numeric:tabular-nums; }
 
   /* depth bar */
   #depthWrap { position:fixed; right:16px; top:50%; transform:translateY(-50%); z-index:3; width:10px; height:200px; background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden; }
@@ -80,6 +81,7 @@
       <div class="cnt" id="chip-pushup"><div class="cntNum" id="cnt-pushup">0</div><div class="cntLabel">Push-up</div></div>
     </div>
     <div id="phase">get in frame</div>
+    <div id="debug"></div>
   </div>
 
   <div id="depthWrap" class="hidden" data-hud><div id="depthMark"></div><div id="depthFill"></div></div>
@@ -105,6 +107,7 @@ const $ = id => document.getElementById(id);
 const video=$('video'), canvas=$('canvas'), ctx=canvas.getContext('2d');
 const phaseEl=$('phase');
 const cntEl={squat:$('cnt-squat'),pullup:$('cnt-pullup'),pushup:$('cnt-pushup')};
+const debugEl=$('debug');
 const chipEl={squat:$('chip-squat'),pullup:$('chip-pullup'),pushup:$('chip-pushup')};
 const depthFill=$('depthFill'), depthMark=$('depthMark');
 const statusText=$('statusText'), pulse=$('pulse'), errEl=$('err');
@@ -183,6 +186,7 @@ function tick(key,ex,m){
   const now=performance.now();
   depthFill.style.height=m.depth.toFixed(0)+'%';
   depthMark.style.bottom=ex.mark+'%';
+  debugEl.textContent=`depth ${m.depth.toFixed(0)}% (need ≥${ex.downAt} then ≤${ex.upAt})`;
   if(phase==='up' && m.depth>=ex.downAt){
     phase='down'; downSince=now; phaseEl.textContent=ex.detail(m);
   } else if(phase==='down' && m.depth<=ex.upAt){
@@ -265,7 +269,7 @@ function render(res){
   if(active!==curActive){ curActive=active; phase='up'; smoothDepth=null; downSince=0; }
 
   const ex=EX[active];
-  if(!allVis(lm,ex.needVis)){ phaseEl.textContent='get fully in frame'; return; }
+  if(!allVis(lm,ex.needVis)){ phaseEl.textContent='get fully in frame'; debugEl.textContent='low confidence on a required joint'; return; }
   const m=ex.measure(lm,wl);
   smoothDepth = smoothDepth===null ? m.depth : smoothDepth+0.35*(m.depth-smoothDepth);
   tick(active,ex,{...m,depth:smoothDepth});
