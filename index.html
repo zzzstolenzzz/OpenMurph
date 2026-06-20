@@ -26,6 +26,7 @@
   @keyframes flyUp { 0%{opacity:1; transform:translateY(0) scale(1);} 100%{opacity:0; transform:translateY(-28px) scale(1.35);} }
   #phase { font-size:13px; color:#9aa0b5; margin-top:8px; min-height:16px; }
   #debug { font-size:11px; color:#5b6cff; margin-top:2px; font-variant-numeric:tabular-nums; }
+  #debug.big { position:fixed; left:12px; right:12px; top:50%; transform:translateY(-50%); z-index:6; font-size:15vw; font-weight:800; color:#fff; text-align:center; background:rgba(8,8,14,0.78); border-radius:24px; padding:18px 10px; line-height:1.15; }
 
   /* depth bar */
   #depthWrap { position:fixed; right:16px; top:50%; transform:translateY(-50%); z-index:3; width:10px; height:200px; background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden; }
@@ -49,6 +50,15 @@
 
   #menuWrap { position:fixed; top:0; right:0; z-index:5; padding:calc(12px + env(safe-area-inset-top)) 14px; }
   #menuBtn { width:34px; height:34px; border-radius:50%; border:none; background:rgba(8,8,14,0.5); color:#e8e8ef; font-size:16px; line-height:1; }
+
+  #dbgRow { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 4px; margin-bottom:12px; }
+  .dbgLabel { font-size:13px; font-weight:700; color:#c9cee0; }
+  .switch { position:relative; display:inline-block; width:44px; height:26px; flex-shrink:0; }
+  .switch input { opacity:0; width:0; height:0; }
+  .switch .slider { position:absolute; inset:0; background:rgba(255,255,255,0.15); border-radius:999px; transition:.2s; cursor:pointer; }
+  .switch .slider:before { content:""; position:absolute; height:20px; width:20px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.2s; }
+  .switch input:checked + .slider { background:#5b6cff; }
+  .switch input:checked + .slider:before { transform:translateX(18px); }
 
   #start { position:fixed; inset:0; z-index:10; background:#0a0a0f; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px; text-align:center; }
   #start h1 { font-size:34px; font-weight:800; letter-spacing:-.5px; margin-bottom:10px; }
@@ -87,11 +97,17 @@
   <div id="depthWrap" class="hidden" data-hud><div id="depthMark"></div><div id="depthFill"></div></div>
 
   <div id="ctrls" class="hidden" data-hud>
-    <div id="exRow" class="hidden">
-      <div class="exBtn" data-ex="squat">Squat</div>
-      <div class="exBtn" data-ex="pullup">Pull-up</div>
-      <div class="exBtn" data-ex="pushup">Push-up</div>
-      <div class="exBtn active" data-ex="auto">Auto</div>
+    <div id="menuPanel" class="hidden">
+      <div id="exRow">
+        <div class="exBtn" data-ex="squat">Squat</div>
+        <div class="exBtn" data-ex="pullup">Pull-up</div>
+        <div class="exBtn" data-ex="pushup">Push-up</div>
+        <div class="exBtn active" data-ex="auto">Auto</div>
+      </div>
+      <div id="dbgRow">
+        <span class="dbgLabel">Debug numbers</span>
+        <label class="switch"><input type="checkbox" id="dbgToggle"><span class="slider"></span></label>
+      </div>
     </div>
     <div id="btnRow">
       <button class="act" id="reset">Reset</button>
@@ -296,7 +312,8 @@ document.querySelectorAll('.exBtn').forEach(b=>b.addEventListener('click',()=>{
   phase='up'; smoothDepth=null; downSince=0; curActive=null;
   autoCandidate=null; autoCandidateCount=0;
 }));
-$('menuBtn').addEventListener('click',()=>{ $('exRow').classList.toggle('hidden'); });
+$('menuBtn').addEventListener('click',()=>{ $('menuPanel').classList.toggle('hidden'); });
+$('dbgToggle').addEventListener('change',e=>{ debugEl.classList.toggle('big',e.target.checked); });
 $('reset').addEventListener('click',()=>{
   Object.keys(counts).forEach(k=>{ counts[k]=0; cntEl[k].textContent='0'; });
   phase='up'; smoothDepth=null; downSince=0;
