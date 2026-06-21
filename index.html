@@ -454,7 +454,7 @@ $('wrap').addEventListener('pointerdown',()=>{
   if(!wireframeMode) return;
   skeletonHidden=true;
   clearTimeout(wfHideTimeout);
-  wfHideTimeout=setTimeout(()=>{ skeletonHidden=false; },3000);
+  wfHideTimeout=setTimeout(()=>{ skeletonHidden=false; },5000);
 });
 $('reset').addEventListener('click',()=>{
   Object.keys(counts).forEach(k=>{ counts[k]=0; cntEl[k].textContent='0'; });
