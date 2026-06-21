@@ -72,17 +72,14 @@
       url('img/murph-bg.png') center top/100% auto no-repeat,
       #0a0a0f;
   }
-  #startBadge { width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:20px; background:linear-gradient(160deg,rgba(91,108,255,0.28),rgba(54,211,153,0.14)); border:1px solid rgba(255,255,255,0.12); box-shadow:0 0 40px rgba(91,108,255,0.35); }
+  #startBadge { width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:32px; background:linear-gradient(160deg,rgba(91,108,255,0.28),rgba(54,211,153,0.14)); border:1px solid rgba(255,255,255,0.12); box-shadow:0 0 40px rgba(91,108,255,0.35); }
   #startBadge svg { width:32px; height:32px; }
-  #startTag { font-size:11px; font-weight:700; letter-spacing:2.5px; color:#8b97ff; text-transform:uppercase; margin-bottom:16px; }
-  #start h1 { font-size:38px; font-weight:800; letter-spacing:-1px; margin-bottom:10px; background:linear-gradient(100deg,#fff,#aab1d6); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  #start p { color:#9aa0b5; font-size:14.5px; max-width:300px; line-height:1.55; margin-bottom:22px; }
-  #exPreview { display:flex; gap:8px; margin-bottom:30px; }
-  #exPreview span { font-size:11px; font-weight:700; color:#c9cee0; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); padding:6px 13px; border-radius:999px; }
   #go { background:linear-gradient(135deg,#6f7dff,#4a59e0); color:#fff; border:none; padding:16px 46px; border-radius:999px; font-size:16px; font-weight:700; box-shadow:0 10px 30px rgba(91,108,255,0.4); transition:transform .12s,box-shadow .12s; }
   #go:active { transform:scale(.96); box-shadow:0 4px 16px rgba(91,108,255,0.3); }
   #err { color:#ff6b6b; font-size:13px; margin-top:16px; max-width:300px; }
   .hidden { display:none !important; }
+
+  #countdown { position:fixed; inset:0; z-index:6; display:flex; align-items:center; justify-content:center; font-size:140px; font-weight:800; color:#fff; background:rgba(0,0,0,0.35); text-shadow:0 4px 30px rgba(0,0,0,0.6); pointer-events:none; font-variant-numeric:tabular-nums; }
 </style>
 </head>
 <body>
@@ -93,11 +90,7 @@
         <path d="M12 7.6v6M8 11h8M9.2 20l2.8-6.4 2.8 6.4" stroke="#9fa8ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
-    <div id="startTag">On-device · private</div>
-    <h1>OpenMurph</h1>
-    <p>Live squat, pull-up &amp; push-up rep counting from your camera. Nothing leaves your phone — set it so your whole body is in frame.</p>
-    <div id="exPreview"><span>Squat</span><span>Push-up</span><span>Pull-up</span></div>
-    <button id="go">Start Camera</button>
+    <button id="go">Begin OpenMurph</button>
     <div id="err"></div>
   </div>
 
@@ -108,6 +101,7 @@
 
   <div id="top" class="hidden" data-hud><div id="status"><span id="pulse"></span><span id="statusText">starting…</span></div></div>
   <div id="menuWrap" class="hidden" data-hud><button id="menuBtn" aria-label="Exercise menu">☰</button></div>
+  <div id="countdown" class="hidden">10</div>
 
   <div id="counter" class="hidden" data-hud>
     <div id="counts">
@@ -161,7 +155,7 @@ const chipEl={squat:$('chip-squat'),pullup:$('chip-pullup'),pushup:$('chip-pushu
 const depthFill=$('depthFill'), depthMark=$('depthMark');
 const statusText=$('statusText'), pulse=$('pulse'), errEl=$('err');
 
-let landmarker, draw, facing='user', stream, running=false, lastT=-1;
+let landmarker, draw, facing='user', stream, running=false, lastT=-1, countdownActive=false;
 let mode='auto';                  // squat | pullup | pushup | auto
 const counts={squat:0,pullup:0,pushup:0};
 let smoothDepth=null, downSince=0, curActive=null;
@@ -392,11 +386,25 @@ function loop(){
   if(!running) return;
   if(video.readyState>=2){
     if(canvas.width!==video.videoWidth){canvas.width=video.videoWidth;canvas.height=video.videoHeight;}
-    if(video.currentTime!==lastT){ lastT=video.currentTime;
+    if(!countdownActive && video.currentTime!==lastT){ lastT=video.currentTime;
       const res=landmarker.detectForVideo(video,performance.now()); render(res);
     }
   }
   requestAnimationFrame(loop);
+}
+// shows the camera feed for `seconds` before the wireframe/counting begins, giving the user time to get into frame
+function runCountdown(seconds){
+  return new Promise(resolve=>{
+    const el=$('countdown');
+    let n=seconds;
+    el.textContent=n;
+    el.classList.remove('hidden');
+    const iv=setInterval(()=>{
+      n--;
+      if(n<=0){ clearInterval(iv); el.classList.add('hidden'); resolve(); }
+      else el.textContent=n;
+    },1000);
+  });
 }
 function render(res){
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -450,9 +458,14 @@ $('go').addEventListener('click',async()=>{
     statusText.textContent='loading…';
     $('start').classList.add('hidden');
     document.querySelectorAll('[data-hud]').forEach(e=>e.classList.remove('hidden'));
-    if(!landmarker) await init();
+    const initPromise=landmarker?Promise.resolve():init(); // load the model while the camera/countdown run
     await startCam();
     running=true; pulse.classList.add('live'); requestAnimationFrame(loop);
+    statusText.textContent='get ready…';
+    countdownActive=true;
+    await runCountdown(10);
+    await initPromise; // make sure the model's ready before detection starts
+    countdownActive=false;
   }catch(e){
     $('start').classList.remove('hidden');
     errEl.textContent='Could not start: '+(e.message||e)+' — open over HTTPS and allow camera.';
