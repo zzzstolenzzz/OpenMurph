@@ -66,14 +66,12 @@
   .switch input:checked + .slider:before { transform:translateX(18px); }
 
   #start {
-    position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 28px; text-align:center;
+    position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding:40px 28px calc(60px + env(safe-area-inset-bottom)); text-align:center;
     background:
       linear-gradient(rgba(8,8,13,0.55), rgba(8,8,13,0.88)),
       url('img/murph-bg.png') center center/100% auto no-repeat,
       #0a0a0f;
   }
-  #startBadge { width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:32px; background:linear-gradient(160deg,rgba(91,108,255,0.28),rgba(54,211,153,0.14)); border:1px solid rgba(255,255,255,0.12); box-shadow:0 0 40px rgba(91,108,255,0.35); }
-  #startBadge svg { width:32px; height:32px; }
   #go { background:rgba(111,125,255,0.28); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); color:#fff; border:1px solid rgba(255,255,255,0.35); padding:16px 46px; border-radius:999px; font-size:16px; font-weight:700; box-shadow:0 10px 30px rgba(91,108,255,0.25); transition:transform .12s,box-shadow .12s,background .12s; }
   #go:active { transform:scale(.96); background:rgba(111,125,255,0.4); box-shadow:0 4px 16px rgba(91,108,255,0.2); }
   #err { color:#ff6b6b; font-size:13px; margin-top:16px; max-width:300px; }
@@ -84,12 +82,6 @@
 </head>
 <body>
   <div id="start">
-    <div id="startBadge">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="5" r="2.3" stroke="#9fa8ff" stroke-width="1.6"/>
-        <path d="M12 7.6v6M8 11h8M9.2 20l2.8-6.4 2.8 6.4" stroke="#9fa8ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </div>
     <button id="go">Begin OpenMurph</button>
     <div id="err"></div>
   </div>
