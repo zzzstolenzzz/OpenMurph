@@ -16,7 +16,7 @@
   #counts { display:flex; justify-content:center; gap:10px; }
   .cnt { position:relative; display:flex; flex-direction:column; align-items:center; padding:8px 16px; border-radius:16px; background:rgba(20,20,30,0.55); border:1px solid rgba(255,255,255,0.1); transition:transform .15s,background .15s,border-color .15s; }
   .cnt.active { background:rgba(91,108,255,0.22); border-color:#5b6cff; transform:scale(1.08); }
-  .cntNum { font-size:38px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; text-shadow:0 4px 20px rgba(0,0,0,0.6); transition:transform .12s; }
+  .cntNum { font-size:38px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; text-shadow:0 4px 20px rgba(0,0,0,0.6); transition:transform .12s; pointer-events:auto; cursor:pointer; }
   .cnt.active .cntNum { font-size:54px; }
   .cntNum.pop { transform:scale(1.25); }
   .cntLabel { font-size:10px; font-weight:700; color:#9aa0b5; text-transform:uppercase; letter-spacing:1.5px; margin-top:2px; }
@@ -54,7 +54,8 @@
   #menuWrap { position:fixed; top:0; right:0; z-index:5; padding:calc(12px + env(safe-area-inset-top)) 14px; }
   #menuBtn { width:34px; height:34px; border-radius:50%; border:none; background:rgba(8,8,14,0.5); color:#e8e8ef; font-size:16px; line-height:1; }
 
-  #dbgRow { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 4px; margin-bottom:12px; }
+  #dbgRow, #wfRow { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 4px; margin-bottom:12px; }
+  video.wf-hidden { opacity:0; }
   .dbgLabel { font-size:13px; font-weight:700; color:#c9cee0; }
   .switch { position:relative; display:inline-block; width:44px; height:26px; flex-shrink:0; }
   .switch input { opacity:0; width:0; height:0; }
@@ -114,6 +115,10 @@
       <div id="dbgRow">
         <span class="dbgLabel">Debug numbers</span>
         <label class="switch"><input type="checkbox" id="dbgToggle"><span class="slider"></span></label>
+      </div>
+      <div id="wfRow">
+        <span class="dbgLabel">Wireframe only</span>
+        <label class="switch"><input type="checkbox" id="wfToggle"><span class="slider"></span></label>
       </div>
     </div>
     <div id="btnRow">
@@ -266,8 +271,8 @@ const EX = {
       const depth=clamp((shoulderY-noseY+span*0.4)/(span*0.9)*100 + (170-elbow)/170*30,0,100);
       return {depth, elbow, noseY, wristY};
     },
-    downAt:55, upAt:35,
-    detail(m){ return m.depth>55?'chin up!':'full hang'; },
+    downAt:40, upAt:25,
+    detail(m){ return m.depth>40?'chin up!':'full hang'; },
     debugPoints(lm,wl){
       const lA=angle(wl[L.lShoulder],wl[L.lElbow],wl[L.lWrist]), rA=angle(wl[L.rShoulder],wl[L.rElbow],wl[L.rWrist]);
       return [{idx:L.lElbow,text:`L elbow ${lA.toFixed(0)}°`},{idx:L.rElbow,text:`R elbow ${rA.toFixed(0)}°`}];
@@ -437,11 +442,17 @@ document.querySelectorAll('.exBtn').forEach(b=>b.addEventListener('click',()=>{
 }));
 $('menuBtn').addEventListener('click',()=>{ $('menuPanel').classList.toggle('hidden'); });
 $('dbgToggle').addEventListener('change',e=>{ debugMode=e.target.checked; debugEl.classList.toggle('on',debugMode); });
+$('wfToggle').addEventListener('change',e=>{ video.classList.toggle('wf-hidden',e.target.checked); });
 $('reset').addEventListener('click',()=>{
   Object.keys(counts).forEach(k=>{ counts[k]=0; cntEl[k].textContent='0'; });
   phase='up'; smoothDepth=null; downSince=0; rangeMin=null; rangeMax=null;
 });
 $('flip').addEventListener('click',async()=>{ facing=facing==='user'?'environment':'user'; try{await startCam();}catch(e){errEl.textContent=e.message;} });
+Object.entries(cntEl).forEach(([key,el])=>el.addEventListener('click',()=>{
+  if(counts[key]<=0) return;
+  counts[key]--; el.textContent=counts[key];
+  if(navigator.vibrate) navigator.vibrate(15);
+}));
 </script>
 </body>
 </html>
