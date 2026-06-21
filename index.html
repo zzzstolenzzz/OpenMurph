@@ -274,7 +274,7 @@ function tick(key,ex,m,autoInfo){
   if(debugMode){
     dbgNumEl.textContent=m.depth.toFixed(0)+'%';
     let line=`${phase} · raw ${m.raw.toFixed(0)}% · range ${rangeMin.toFixed(0)}-${rangeMax.toFixed(0)} · need ≥${ex.downAt}/≤${ex.upAt}`;
-    if(autoInfo) line+=` · auto: wristΔ${autoInfo.wristShoulderDelta.toFixed(2)} hipΔ${autoInfo.shoulderHipDelta.toFixed(2)}`;
+    if(autoInfo) line+=` · auto: wristΔ${autoInfo.wristShoulderDelta.toFixed(2)} torso dx${autoInfo.dx.toFixed(2)}/dy${autoInfo.dy.toFixed(2)}`;
     dbgSubEl.textContent=line;
   }
 }
@@ -295,15 +295,22 @@ function bump(key){
 function detect(lm){
   const wristY=Math.min(lm[L.lWrist].y,lm[L.rWrist].y);
   const shoulderY=(lm[L.lShoulder].y+lm[L.rShoulder].y)/2;
+  const shoulderX=(lm[L.lShoulder].x+lm[L.rShoulder].x)/2;
   const hipY=(lm[L.lHip].y+lm[L.rHip].y)/2;
-  const wristShoulderDelta=wristY-shoulderY;       // negative = wrists above shoulders
-  const shoulderHipDelta=Math.abs(shoulderY-hipY); // small = body roughly horizontal
+  const hipX=(lm[L.lHip].x+lm[L.rHip].x)/2;
+  const wristShoulderDelta=wristY-shoulderY; // negative = wrists above shoulders
+  // torso orientation: how much of its length runs sideways vs up-down.
+  // This stays stable through a push-up rep (you're not rotating, just
+  // moving slightly toward/away from the camera), unlike an absolute
+  // shoulder-hip distance which perspective shifts as you descend.
+  const dx=hipX-shoulderX, dy=hipY-shoulderY;
+  const torsoHorizontal=Math.abs(dx)>Math.abs(dy);
   let result='squat';
   // hands well above head -> pull-up
   if(wristShoulderDelta < -0.05 && vis(lm,L.lWrist) && vis(lm,L.rWrist)) result='pullup';
-  // body horizontal (shoulders & hips similar Y) -> push-up
-  else if(shoulderHipDelta < 0.18) result='pushup';
-  return {result, wristShoulderDelta, shoulderHipDelta};
+  // torso lying sideways across the frame -> push-up
+  else if(torsoHorizontal) result='pushup';
+  return {result, wristShoulderDelta, dx, dy};
 }
 function detectStable(lm){
   const d=detect(lm);
