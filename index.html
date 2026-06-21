@@ -147,6 +147,7 @@ const counts={squat:0,pullup:0,pushup:0};
 let smoothDepth=null, downSince=0, curActive=null;
 let rangeMin=null, rangeMax=null;   // auto-calibrated envelope of the depth signal, per exercise
 let debugMode=false;
+let wireframeMode=false, skeletonHidden=false, wfHideTimeout=null;
 let autoCandidate=null, autoCandidateCount=0, autoActive='squat';
 
 const L={ nose:0,lShoulder:11,rShoulder:12,lElbow:13,rElbow:14,lWrist:15,rWrist:16,
@@ -383,11 +384,13 @@ function render(res){
   statusText.textContent='live';
   const lm=res.landmarks[0];
   const wl=(res.worldLandmarks&&res.worldLandmarks[0])||lm; // camera-rotation-invariant 3D landmarks
-  if(debugMode){
-    drawSkeletonDebug(lm);
-  } else {
-    draw.drawConnectors(lm,PoseLandmarker.POSE_CONNECTIONS,{color:'rgba(255,255,255,0.5)',lineWidth:2});
-    draw.drawLandmarks(lm,{radius:3,color:'#5b6cff'});
+  if(!(wireframeMode && skeletonHidden)){
+    if(debugMode){
+      drawSkeletonDebug(lm);
+    } else {
+      draw.drawConnectors(lm,PoseLandmarker.POSE_CONNECTIONS,{color:'rgba(255,255,255,0.5)',lineWidth:2});
+      draw.drawLandmarks(lm,{radius:3,color:'#5b6cff'});
+    }
   }
 
   const auto=mode==='auto'?detectStable(lm):null;
@@ -443,7 +446,16 @@ document.querySelectorAll('.exBtn').forEach(b=>b.addEventListener('click',()=>{
 }));
 $('menuBtn').addEventListener('click',()=>{ $('menuPanel').classList.toggle('hidden'); });
 $('dbgToggle').addEventListener('change',e=>{ debugMode=e.target.checked; debugEl.classList.toggle('on',debugMode); });
-$('wfToggle').addEventListener('change',e=>{ $('counts').classList.toggle('wf-hidden',e.target.checked); });
+$('wfToggle').addEventListener('change',e=>{
+  wireframeMode=e.target.checked;
+  $('counts').classList.toggle('wf-hidden',wireframeMode);
+});
+$('wrap').addEventListener('pointerdown',()=>{
+  if(!wireframeMode) return;
+  skeletonHidden=true;
+  clearTimeout(wfHideTimeout);
+  wfHideTimeout=setTimeout(()=>{ skeletonHidden=false; },3000);
+});
 $('reset').addEventListener('click',()=>{
   Object.keys(counts).forEach(k=>{ counts[k]=0; cntEl[k].textContent='0'; });
   phase='up'; smoothDepth=null; downSince=0; rangeMin=null; rangeMax=null;
