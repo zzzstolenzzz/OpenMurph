@@ -167,6 +167,27 @@ function drawLabels(lm,pts){
   }
 }
 
+// draws the skeleton color-coded by tracking confidence: green = tracked, red = not
+function drawSkeletonDebug(lm){
+  const ok=p=>(p.visibility??1)>0.4;
+  ctx.lineWidth=4;
+  for(const c of PoseLandmarker.POSE_CONNECTIONS){
+    const a=lm[c.start], b=lm[c.end];
+    if(!a||!b) continue;
+    ctx.strokeStyle=(ok(a)&&ok(b))?'#36d399':'#ff4d4d';
+    ctx.beginPath();
+    ctx.moveTo(a.x*canvas.width,a.y*canvas.height);
+    ctx.lineTo(b.x*canvas.width,b.y*canvas.height);
+    ctx.stroke();
+  }
+  for(const p of lm){
+    ctx.fillStyle=ok(p)?'#36d399':'#ff4d4d';
+    ctx.beginPath();
+    ctx.arc(p.x*canvas.width,p.y*canvas.height,4,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
 // ---------- angle helpers ----------
 const angle=(a,b,c)=>{ // angle at b, 3D-aware so it works on world landmarks
   const ab={x:a.x-b.x,y:a.y-b.y,z:(a.z??0)-(b.z??0)}, cb={x:c.x-b.x,y:c.y-b.y,z:(c.z??0)-(b.z??0)};
@@ -349,8 +370,12 @@ function render(res){
   statusText.textContent='live';
   const lm=res.landmarks[0];
   const wl=(res.worldLandmarks&&res.worldLandmarks[0])||lm; // camera-rotation-invariant 3D landmarks
-  draw.drawConnectors(lm,PoseLandmarker.POSE_CONNECTIONS,{color:'rgba(255,255,255,0.5)',lineWidth:2});
-  draw.drawLandmarks(lm,{radius:3,color:'#5b6cff'});
+  if(debugMode){
+    drawSkeletonDebug(lm);
+  } else {
+    draw.drawConnectors(lm,PoseLandmarker.POSE_CONNECTIONS,{color:'rgba(255,255,255,0.5)',lineWidth:2});
+    draw.drawLandmarks(lm,{radius:3,color:'#5b6cff'});
+  }
 
   const auto=mode==='auto'?detectStable(lm):null;
   const active=auto?auto.active:mode;
