@@ -24,6 +24,7 @@
   .plusOne { position:absolute; top:-4px; right:0; font-size:16px; font-weight:800; color:#36d399; opacity:0; }
   .plusOne.fly { animation:flyUp .8s ease-out forwards; }
   @keyframes flyUp { 0%{opacity:1; transform:translateY(0) scale(1);} 100%{opacity:0; transform:translateY(-28px) scale(1.35);} }
+  .cnt.minus { background:rgba(255,77,77,0.4); border-color:#ff4d4d; transition:background .1s,border-color .1s; }
   #phase { font-size:13px; color:#9aa0b5; margin-top:8px; min-height:16px; }
   #debug { display:none; margin:10px auto 0; max-width:92vw; background:rgba(8,8,14,0.82); border-radius:18px; padding:10px 20px 14px; }
   #debug.on { display:inline-block; }
@@ -451,6 +452,8 @@ $('flip').addEventListener('click',async()=>{ facing=facing==='user'?'environmen
 Object.entries(cntEl).forEach(([key,el])=>el.addEventListener('click',()=>{
   if(counts[key]<=0) return;
   counts[key]--; el.textContent=counts[key];
+  chipEl[key].classList.add('minus');
+  setTimeout(()=>chipEl[key].classList.remove('minus'),500);
   if(navigator.vibrate) navigator.vibrate(15);
 }));
 </script>
