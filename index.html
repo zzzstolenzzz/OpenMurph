@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Rep Counter</title>
+<title>OpenMurph</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { height:100%; background:#0a0a0f; color:#e8e8ef; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; overflow:hidden; }
@@ -25,8 +25,11 @@
   .plusOne.fly { animation:flyUp .8s ease-out forwards; }
   @keyframes flyUp { 0%{opacity:1; transform:translateY(0) scale(1);} 100%{opacity:0; transform:translateY(-28px) scale(1.35);} }
   #phase { font-size:13px; color:#9aa0b5; margin-top:8px; min-height:16px; }
-  #debug { font-size:11px; color:#5b6cff; margin-top:2px; font-variant-numeric:tabular-nums; }
-  #debug.big { position:fixed; left:12px; right:12px; top:50%; transform:translateY(-50%); z-index:6; font-size:15vw; font-weight:800; color:#fff; text-align:center; background:rgba(8,8,14,0.78); border-radius:24px; padding:18px 10px; line-height:1.15; }
+  #debug { display:none; margin:10px auto 0; max-width:92vw; background:rgba(8,8,14,0.82); border-radius:18px; padding:10px 20px 14px; }
+  #debug.on { display:inline-block; }
+  .dbgTitle { font-size:11px; font-weight:800; letter-spacing:2px; color:#9aa0b5; }
+  #dbgNum { font-size:56px; font-weight:800; color:#fff; line-height:1.05; font-variant-numeric:tabular-nums; }
+  #dbgSub { font-size:12px; color:#c9cee0; margin-top:4px; font-variant-numeric:tabular-nums; }
 
   /* depth bar */
   #depthWrap { position:fixed; right:16px; top:50%; transform:translateY(-50%); z-index:3; width:10px; height:200px; background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden; }
@@ -70,7 +73,7 @@
 </head>
 <body>
   <div id="start">
-    <h1>Rep Counter</h1>
+    <h1>OpenMurph</h1>
     <p>Live squat, pull-up &amp; push-up counting. Runs entirely on your phone — nothing leaves the device. Set the phone so your whole body is in frame.</p>
     <button id="go">Start Camera</button>
     <div id="err"></div>
@@ -91,7 +94,11 @@
       <div class="cnt" id="chip-pushup"><div class="cntNum" id="cnt-pushup">0</div><div class="cntLabel">Push-up</div></div>
     </div>
     <div id="phase">get in frame</div>
-    <div id="debug"></div>
+    <div id="debug">
+      <div class="dbgTitle">DEPTH</div>
+      <div id="dbgNum">0%</div>
+      <div id="dbgSub">—</div>
+    </div>
   </div>
 
   <div id="depthWrap" class="hidden" data-hud><div id="depthMark"></div><div id="depthFill"></div></div>
@@ -123,7 +130,7 @@ const $ = id => document.getElementById(id);
 const video=$('video'), canvas=$('canvas'), ctx=canvas.getContext('2d');
 const phaseEl=$('phase');
 const cntEl={squat:$('cnt-squat'),pullup:$('cnt-pullup'),pushup:$('cnt-pushup')};
-const debugEl=$('debug');
+const debugEl=$('debug'), dbgNumEl=$('dbgNum'), dbgSubEl=$('dbgSub');
 const chipEl={squat:$('chip-squat'),pullup:$('chip-pullup'),pushup:$('chip-pushup')};
 const depthFill=$('depthFill'), depthMark=$('depthMark');
 const statusText=$('statusText'), pulse=$('pulse'), errEl=$('err');
@@ -139,30 +146,24 @@ let autoCandidate=null, autoCandidateCount=0, autoActive='squat';
 const L={ nose:0,lShoulder:11,rShoulder:12,lElbow:13,rElbow:14,lWrist:15,rWrist:16,
           lHip:23,rHip:24,lKnee:25,rKnee:26,lAnkle:27,rAnkle:28 };
 
-const LABEL_GROUPS=[
-  {name:'Arm',   color:'#5b6cff', idx:[L.lElbow,L.rElbow,L.lWrist,L.rWrist]},
-  {name:'Torso', color:'#36d399', idx:[L.nose,L.lShoulder,L.rShoulder,L.lHip,L.rHip]},
-  {name:'Leg',   color:'#ff6b6b', idx:[L.lKnee,L.rKnee,L.lAnkle,L.rAnkle]},
-];
-function drawLabels(lm){
+// draws the live per-joint angle labels relevant to the active exercise (debug mode only)
+function drawLabels(lm,pts){
   ctx.font='bold 13px sans-serif';
   ctx.textAlign='center';
   ctx.textBaseline='middle';
-  for(const g of LABEL_GROUPS){
-    for(const i of g.idx){
-      const p=lm[i];
-      if((p.visibility??1)<0.4) continue;
-      const x=p.x*canvas.width, y=p.y*canvas.height-16;
-      ctx.save();
-      ctx.translate(x,y);
-      ctx.scale(-1,1); // counter the canvas's CSS mirror so text reads correctly
-      const w=ctx.measureText(g.name).width+8;
-      ctx.fillStyle='rgba(0,0,0,0.6)';
-      ctx.fillRect(-w/2,-10,w,18);
-      ctx.fillStyle=g.color;
-      ctx.fillText(g.name,0,0);
-      ctx.restore();
-    }
+  for(const {idx,text} of pts){
+    const p=lm[idx];
+    if(!p||(p.visibility??1)<0.4) continue;
+    const x=p.x*canvas.width, y=p.y*canvas.height-16;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.scale(-1,1); // counter the canvas's CSS mirror so text reads correctly
+    const w=ctx.measureText(text).width+10;
+    ctx.fillStyle='rgba(0,0,0,0.65)';
+    ctx.fillRect(-w/2,-10,w,18);
+    ctx.fillStyle='#5b6cff';
+    ctx.fillText(text,0,0);
+    ctx.restore();
   }
 }
 
@@ -177,6 +178,24 @@ const avg=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2,visibility:Math.min(a.visibility?
 const vis=(lm,i)=>(lm[i].visibility??1)>0.4;
 const allVis=(lm,idxs)=>idxs.every(i=>vis(lm,i));
 
+const JOINT_NAME={
+  [L.nose]:'face',
+  [L.lShoulder]:'shoulders',[L.rShoulder]:'shoulders',
+  [L.lElbow]:'elbows',[L.rElbow]:'elbows',
+  [L.lWrist]:'wrists',[L.rWrist]:'wrists',
+  [L.lHip]:'hips',[L.rHip]:'hips',
+  [L.lKnee]:'knees',[L.rKnee]:'knees',
+  [L.lAnkle]:'ankles',[L.rAnkle]:'ankles',
+};
+function frameHint(names){
+  const lower=names.some(n=>['knees','ankles','hips'].includes(n));
+  const upper=names.some(n=>['shoulders','elbows','wrists'].includes(n));
+  if(lower&&upper) return 'step back — your whole body needs to be in frame';
+  if(lower) return 'step back so your legs are visible';
+  if(upper) return 'step back so your arms are visible';
+  return 'move into frame';
+}
+
 // ---------- per-exercise config ----------
 // each: measure() -> {value (0..100 depth %), down(bool flag thresholds), label, detail}
 const EX = {
@@ -190,7 +209,11 @@ const EX = {
       return {depth, kneeAng};
     },
     downAt:65, upAt:30,            // depth % thresholds (hysteresis)
-    detail(m){ return m.kneeAng<100?'good depth':'go lower'; }
+    detail(m){ return m.kneeAng<100?'good depth':'go lower'; },
+    debugPoints(lm,wl){
+      const lA=angle(wl[L.lHip],wl[L.lKnee],wl[L.lAnkle]), rA=angle(wl[L.rHip],wl[L.rKnee],wl[L.rAnkle]);
+      return [{idx:L.lKnee,text:`L knee ${lA.toFixed(0)}°`},{idx:L.rKnee,text:`R knee ${rA.toFixed(0)}°`}];
+    }
   },
   pushup:{
     label:'Push-ups', mark:50,
@@ -201,7 +224,11 @@ const EX = {
       return {depth, elbow};
     },
     downAt:60, upAt:25,
-    detail(m){ return m.elbow<95?'chest down':'lower more'; }
+    detail(m){ return m.elbow<95?'chest down':'lower more'; },
+    debugPoints(lm,wl){
+      const lA=angle(wl[L.lShoulder],wl[L.lElbow],wl[L.lWrist]), rA=angle(wl[L.rShoulder],wl[L.rElbow],wl[L.rWrist]);
+      return [{idx:L.lElbow,text:`L elbow ${lA.toFixed(0)}°`},{idx:L.rElbow,text:`R elbow ${rA.toFixed(0)}°`}];
+    }
   },
   pullup:{
     label:'Pull-ups', mark:55,
@@ -219,7 +246,11 @@ const EX = {
       return {depth, elbow, noseY, wristY};
     },
     downAt:62, upAt:28,
-    detail(m){ return m.depth>62?'chin up!':'full hang'; }
+    detail(m){ return m.depth>62?'chin up!':'full hang'; },
+    debugPoints(lm,wl){
+      const lA=angle(wl[L.lShoulder],wl[L.lElbow],wl[L.lWrist]), rA=angle(wl[L.rShoulder],wl[L.rElbow],wl[L.rWrist]);
+      return [{idx:L.lElbow,text:`L elbow ${lA.toFixed(0)}°`},{idx:L.rElbow,text:`R elbow ${rA.toFixed(0)}°`}];
+    }
   }
 };
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -227,11 +258,10 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 // ---------- rep state machine ----------
 let phase='up';                 // 'up' (top) or 'down' (bottom)
 let lastFlip=0;
-function tick(key,ex,m){
+function tick(key,ex,m,autoInfo){
   const now=performance.now();
   depthFill.style.height=m.depth.toFixed(0)+'%';
   depthMark.style.bottom=ex.mark+'%';
-  debugEl.textContent=`norm ${m.depth.toFixed(0)}% (raw ${m.raw.toFixed(0)}%, range ${rangeMin.toFixed(0)}-${rangeMax.toFixed(0)})`;
   if(phase==='up' && m.depth>=ex.downAt){
     phase='down'; downSince=now; phaseEl.textContent=ex.detail(m);
   } else if(phase==='down' && m.depth<=ex.upAt){
@@ -240,6 +270,12 @@ function tick(key,ex,m){
     phase='up'; phaseEl.textContent='up';
   } else {
     phaseEl.textContent = phase==='down' ? ex.detail(m) : 'ready';
+  }
+  if(debugMode){
+    dbgNumEl.textContent=m.depth.toFixed(0)+'%';
+    let line=`${phase} · raw ${m.raw.toFixed(0)}% · range ${rangeMin.toFixed(0)}-${rangeMax.toFixed(0)} · need ≥${ex.downAt}/≤${ex.upAt}`;
+    if(autoInfo) line+=` · auto: wristΔ${autoInfo.wristShoulderDelta.toFixed(2)} hipΔ${autoInfo.shoulderHipDelta.toFixed(2)}`;
+    dbgSubEl.textContent=line;
   }
 }
 function bump(key){
@@ -260,19 +296,20 @@ function detect(lm){
   const wristY=Math.min(lm[L.lWrist].y,lm[L.rWrist].y);
   const shoulderY=(lm[L.lShoulder].y+lm[L.rShoulder].y)/2;
   const hipY=(lm[L.lHip].y+lm[L.rHip].y)/2;
-  const shoulderX=(lm[L.lShoulder].x+lm[L.rShoulder].x)/2;
-  const hipX=(lm[L.lHip].x+lm[L.rHip].x)/2;
+  const wristShoulderDelta=wristY-shoulderY;       // negative = wrists above shoulders
+  const shoulderHipDelta=Math.abs(shoulderY-hipY); // small = body roughly horizontal
+  let result='squat';
   // hands well above head -> pull-up
-  if(wristY < shoulderY-0.05 && vis(lm,L.lWrist) && vis(lm,L.rWrist)) return 'pullup';
-  // body horizontal (shoulders & hips similar Y, large X spread) -> push-up
-  if(Math.abs(shoulderY-hipY) < 0.18) return 'pushup';
-  return 'squat';
+  if(wristShoulderDelta < -0.05 && vis(lm,L.lWrist) && vis(lm,L.rWrist)) result='pullup';
+  // body horizontal (shoulders & hips similar Y) -> push-up
+  else if(shoulderHipDelta < 0.18) result='pushup';
+  return {result, wristShoulderDelta, shoulderHipDelta};
 }
 function detectStable(lm){
   const d=detect(lm);
-  if(d===autoCandidate) autoCandidateCount++; else { autoCandidate=d; autoCandidateCount=1; }
-  if(autoCandidateCount>=5) autoActive=d; // ~5 consistent frames before switching, avoids flicker mid-rep
-  return autoActive;
+  if(d.result===autoCandidate) autoCandidateCount++; else { autoCandidate=d.result; autoCandidateCount=1; }
+  if(autoCandidateCount>=5) autoActive=d.result; // ~5 consistent frames before switching, avoids flicker mid-rep
+  return {active:autoActive, info:d};
 }
 
 // ---------- camera + loop ----------
@@ -307,15 +344,22 @@ function render(res){
   const wl=(res.worldLandmarks&&res.worldLandmarks[0])||lm; // camera-rotation-invariant 3D landmarks
   draw.drawConnectors(lm,PoseLandmarker.POSE_CONNECTIONS,{color:'rgba(255,255,255,0.5)',lineWidth:2});
   draw.drawLandmarks(lm,{radius:3,color:'#5b6cff'});
-  if(debugMode) drawLabels(lm);
 
-  const active=mode==='auto'?detectStable(lm):mode;
+  const auto=mode==='auto'?detectStable(lm):null;
+  const active=auto?auto.active:mode;
   Object.entries(chipEl).forEach(([k,el])=>el.classList.toggle('active',k===active));
 
   if(active!==curActive){ curActive=active; phase='up'; smoothDepth=null; downSince=0; rangeMin=null; rangeMax=null; }
 
   const ex=EX[active];
-  if(!allVis(lm,ex.needVis)){ phaseEl.textContent='get fully in frame'; debugEl.textContent='low confidence on a required joint'; return; }
+  if(!allVis(lm,ex.needVis)){
+    const missing=[...new Set(ex.needVis.filter(i=>!vis(lm,i)).map(i=>JOINT_NAME[i]))];
+    phaseEl.textContent=frameHint(missing);
+    if(debugMode){ dbgNumEl.textContent='—'; dbgSubEl.textContent=`can't see: ${missing.join(', ')}`; }
+    return;
+  }
+  if(debugMode) drawLabels(lm,ex.debugPoints(lm,wl));
+
   const m=ex.measure(lm,wl);
   smoothDepth = smoothDepth===null ? m.depth : smoothDepth+0.35*(m.depth-smoothDepth);
   const raw=smoothDepth;
@@ -328,7 +372,7 @@ function render(res){
   rangeMin=Math.min(rangeMin,raw); rangeMax=Math.max(rangeMax,raw);
   const norm=clamp((raw-rangeMin)/Math.max(rangeMax-rangeMin,15)*100,0,100);
 
-  tick(active,ex,{...m,depth:norm,raw});
+  tick(active,ex,{...m,depth:norm,raw},auto?.info);
 }
 
 // ---------- UI ----------
@@ -353,7 +397,7 @@ document.querySelectorAll('.exBtn').forEach(b=>b.addEventListener('click',()=>{
   autoCandidate=null; autoCandidateCount=0;
 }));
 $('menuBtn').addEventListener('click',()=>{ $('menuPanel').classList.toggle('hidden'); });
-$('dbgToggle').addEventListener('change',e=>{ debugMode=e.target.checked; debugEl.classList.toggle('big',debugMode); });
+$('dbgToggle').addEventListener('change',e=>{ debugMode=e.target.checked; debugEl.classList.toggle('on',debugMode); });
 $('reset').addEventListener('click',()=>{
   Object.keys(counts).forEach(k=>{ counts[k]=0; cntEl[k].textContent='0'; });
   phase='up'; smoothDepth=null; downSince=0; rangeMin=null; rangeMax=null;
