@@ -65,18 +65,38 @@
   .switch input:checked + .slider { background:#5b6cff; }
   .switch input:checked + .slider:before { transform:translateX(18px); }
 
-  #start { position:fixed; inset:0; z-index:10; background:#0a0a0f; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px; text-align:center; }
-  #start h1 { font-size:34px; font-weight:800; letter-spacing:-.5px; margin-bottom:10px; }
-  #start p { color:#9aa0b5; font-size:15px; max-width:330px; line-height:1.5; margin-bottom:26px; }
-  #go { background:#5b6cff; color:#fff; border:none; padding:16px 42px; border-radius:999px; font-size:17px; font-weight:700; }
-  #err { color:#ff6b6b; font-size:14px; margin-top:18px; max-width:320px; }
+  #start {
+    position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 28px; text-align:center;
+    background:
+      linear-gradient(rgba(8,8,13,0.55), rgba(8,8,13,0.88)),
+      url('img/murph-bg.png') center/cover no-repeat,
+      #0a0a0f;
+  }
+  #startBadge { width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:20px; background:linear-gradient(160deg,rgba(91,108,255,0.28),rgba(54,211,153,0.14)); border:1px solid rgba(255,255,255,0.12); box-shadow:0 0 40px rgba(91,108,255,0.35); }
+  #startBadge svg { width:32px; height:32px; }
+  #startTag { font-size:11px; font-weight:700; letter-spacing:2.5px; color:#8b97ff; text-transform:uppercase; margin-bottom:16px; }
+  #start h1 { font-size:38px; font-weight:800; letter-spacing:-1px; margin-bottom:10px; background:linear-gradient(100deg,#fff,#aab1d6); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #start p { color:#9aa0b5; font-size:14.5px; max-width:300px; line-height:1.55; margin-bottom:22px; }
+  #exPreview { display:flex; gap:8px; margin-bottom:30px; }
+  #exPreview span { font-size:11px; font-weight:700; color:#c9cee0; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); padding:6px 13px; border-radius:999px; }
+  #go { background:linear-gradient(135deg,#6f7dff,#4a59e0); color:#fff; border:none; padding:16px 46px; border-radius:999px; font-size:16px; font-weight:700; box-shadow:0 10px 30px rgba(91,108,255,0.4); transition:transform .12s,box-shadow .12s; }
+  #go:active { transform:scale(.96); box-shadow:0 4px 16px rgba(91,108,255,0.3); }
+  #err { color:#ff6b6b; font-size:13px; margin-top:16px; max-width:300px; }
   .hidden { display:none !important; }
 </style>
 </head>
 <body>
   <div id="start">
+    <div id="startBadge">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="5" r="2.3" stroke="#9fa8ff" stroke-width="1.6"/>
+        <path d="M12 7.6v6M8 11h8M9.2 20l2.8-6.4 2.8 6.4" stroke="#9fa8ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div id="startTag">On-device · private</div>
     <h1>OpenMurph</h1>
-    <p>Live squat, pull-up &amp; push-up counting. Runs entirely on your phone — nothing leaves the device. Set the phone so your whole body is in frame.</p>
+    <p>Live squat, pull-up &amp; push-up rep counting from your camera. Nothing leaves your phone — set it so your whole body is in frame.</p>
+    <div id="exPreview"><span>Squat</span><span>Push-up</span><span>Pull-up</span></div>
     <button id="go">Start Camera</button>
     <div id="err"></div>
   </div>
