@@ -56,7 +56,7 @@
   #menuBtn { width:34px; height:34px; border-radius:50%; border:none; background:rgba(8,8,14,0.5); color:#e8e8ef; font-size:16px; line-height:1; }
 
   #dbgRow, #wfRow { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 4px; margin-bottom:12px; }
-  video.wf-hidden { opacity:0; }
+  #counts.wf-hidden { display:none; }
   .dbgLabel { font-size:13px; font-weight:700; color:#c9cee0; }
   .switch { position:relative; display:inline-block; width:44px; height:26px; flex-shrink:0; }
   .switch input { opacity:0; width:0; height:0; }
@@ -443,7 +443,7 @@ document.querySelectorAll('.exBtn').forEach(b=>b.addEventListener('click',()=>{
 }));
 $('menuBtn').addEventListener('click',()=>{ $('menuPanel').classList.toggle('hidden'); });
 $('dbgToggle').addEventListener('change',e=>{ debugMode=e.target.checked; debugEl.classList.toggle('on',debugMode); });
-$('wfToggle').addEventListener('change',e=>{ video.classList.toggle('wf-hidden',e.target.checked); });
+$('wfToggle').addEventListener('change',e=>{ $('counts').classList.toggle('wf-hidden',e.target.checked); });
 $('reset').addEventListener('click',()=>{
   Object.keys(counts).forEach(k=>{ counts[k]=0; cntEl[k].textContent='0'; });
   phase='up'; smoothDepth=null; downSince=0; rangeMin=null; rangeMax=null;
